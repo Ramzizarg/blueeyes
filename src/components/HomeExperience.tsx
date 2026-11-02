@@ -5,11 +5,11 @@ import { ContactSection } from "@/components/ContactSection";
 import { Header } from "@/components/Header";
 import { ImmersiveStory } from "@/components/ImmersiveStory";
 import { SiteFooter } from "@/components/SiteFooter";
-import { SmoothScroll } from "@/components/SmoothScroll";
+import { SmoothScroll, scrollToTarget } from "@/components/SmoothScroll";
 
 export function HomeExperience() {
   const jumpContact = useCallback(() => {
-    document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
+    scrollToTarget("#contact", { duration: 1.2 });
   }, []);
 
   return (

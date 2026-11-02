@@ -1,17 +1,21 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { scrollToTarget } from "@/components/SmoothScroll";
 import { slides } from "@/lib/slides";
 
 type ImmersiveStoryProps = {
   onContact?: () => void;
 };
 
+const origins = ["c", "tr", "bl", "br", "tl"] as const;
+
 export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
   const [index, setIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const reduceMotion = useReducedMotion();
+  const parallaxRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -21,7 +25,6 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  // Preload every slide image once so swaps never flash empty
   useEffect(() => {
     for (const slide of slides) {
       const desktop = new window.Image();
@@ -57,15 +60,37 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
     return () => observer.disconnect();
   }, []);
 
+  // Gentle parallax while panels slide past each other
+  useEffect(() => {
+    if (reduceMotion) return;
+
+    let frame = 0;
+    const tick = () => {
+      const vh = window.innerHeight || 1;
+      parallaxRefs.current.forEach((node) => {
+        if (!node) return;
+        const panel = node.parentElement?.parentElement;
+        if (!panel) return;
+        const rect = panel.getBoundingClientRect();
+        const progress = (rect.top + rect.height / 2 - vh / 2) / vh;
+        const shift = Math.max(-10, Math.min(10, progress * -12));
+        node.style.transform = `translate3d(0, ${shift}%, 0)`;
+      });
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [reduceMotion]);
+
   const goTo = useCallback((next: number) => {
     if (next >= slides.length) {
-      document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
+      scrollToTarget("#contact", { duration: 1.2 });
       return;
     }
     const clamped = Math.max(0, Math.min(slides.length - 1, next));
-    document
-      .getElementById(`slide-${slides[clamped].id}`)
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const el = document.getElementById(`slide-${slides[clamped].id}`);
+    if (el) scrollToTarget(el, { duration: 1.15 });
   }, []);
 
   return (
@@ -77,23 +102,31 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
           className="story-panel relative flex h-[100dvh] w-full flex-col justify-end overflow-hidden"
           aria-label={`Slide ${i + 1} of ${slides.length}`}
         >
-          <div className="absolute inset-0">
-            <picture>
-              <source media="(min-width: 768px)" srcSet={slide.image} />
-              <img
-                src={slide.mobileImage}
-                alt={slide.imageAlt}
-                width={isMobile ? 1440 : 2560}
-                height={isMobile ? 2560 : 1440}
-                decoding={i === 0 ? "sync" : "async"}
-                loading={i === 0 ? "eager" : "lazy"}
-                fetchPriority={i === 0 ? "high" : "auto"}
-                draggable={false}
-                className={`story-photo absolute inset-0 h-full w-full select-none object-cover object-center ${
-                  reduceMotion ? "" : "story-photo-motion"
-                }`}
-              />
-            </picture>
+          <div className="absolute inset-0 overflow-hidden">
+            <div
+              ref={(node) => {
+                parallaxRefs.current[i] = node;
+              }}
+              className="story-parallax absolute inset-[-12%] will-change-transform"
+            >
+              <picture className="absolute inset-0 block h-full w-full">
+                <source media="(min-width: 768px)" srcSet={slide.image} />
+                <img
+                  src={slide.mobileImage}
+                  alt={slide.imageAlt}
+                  width={isMobile ? 1440 : 2560}
+                  height={isMobile ? 2560 : 1440}
+                  decoding={i === 0 ? "sync" : "async"}
+                  loading={i === 0 ? "eager" : "lazy"}
+                  fetchPriority={i === 0 ? "high" : "auto"}
+                  draggable={false}
+                  data-origin={origins[i % origins.length]}
+                  className={`story-photo absolute inset-0 h-full w-full select-none object-cover object-center ${
+                    reduceMotion ? "" : "story-photo-motion"
+                  }`}
+                />
+              </picture>
+            </div>
           </div>
 
           <div className="relative z-10 flex h-full flex-col justify-end px-5 pb-24 pt-28 sm:px-8 sm:pb-28 lg:px-10 lg:pb-32">

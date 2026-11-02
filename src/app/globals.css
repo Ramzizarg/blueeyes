@@ -38,6 +38,12 @@ html {
   background: #0d1018;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-snap-type: y proximity;
+  }
+}
+
 body {
   margin: 0;
   min-height: 100%;
@@ -49,24 +55,50 @@ body {
 
 .story-panel {
   background: #0d1018;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.story-parallax {
+  transform: translate3d(0, 0, 0);
 }
 
 .story-photo {
-  transform: scale(1.02);
+  transform: scale(1.08);
   transform-origin: center center;
 }
 
 .story-photo-motion {
-  animation: story-ken 18s ease-in-out infinite alternate;
+  animation: story-ken 22s linear infinite alternate;
   will-change: transform;
+}
+
+.story-photo-motion[data-origin="tl"] {
+  transform-origin: 28% 32%;
+}
+
+.story-photo-motion[data-origin="tr"] {
+  transform-origin: 72% 30%;
+}
+
+.story-photo-motion[data-origin="bl"] {
+  transform-origin: 30% 70%;
+}
+
+.story-photo-motion[data-origin="br"] {
+  transform-origin: 70% 68%;
+}
+
+.story-photo-motion[data-origin="c"] {
+  transform-origin: 50% 46%;
 }
 
 @keyframes story-ken {
   from {
-    transform: scale(1.02) translate3d(0, 0, 0);
+    transform: scale(1.08) translate3d(0, 0, 0);
   }
   to {
-    transform: scale(1.06) translate3d(0, -1.2%, 0);
+    transform: scale(1.18) translate3d(-1.6%, -1.2%, 0);
   }
 }
 
