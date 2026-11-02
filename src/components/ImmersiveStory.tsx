@@ -1,15 +1,7 @@
 "use client";
 
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-  useSpring,
-  useTransform,
-  type MotionValue,
-  type PanInfo,
-} from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
 import { slides } from "@/lib/slides";
 
 type ImmersiveStoryProps = {
@@ -18,323 +10,208 @@ type ImmersiveStoryProps = {
 
 export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
   const [index, setIndex] = useState(0);
-  const [direction, setDirection] = useState(0);
-  const transitioning = useRef(false);
+  const [isMobile, setIsMobile] = useState(false);
   const reduceMotion = useReducedMotion();
-  const active = slides[index];
-
-  const rawX = useSpring(0, { stiffness: 50, damping: 24, mass: 0.4 });
-  const rawY = useSpring(0, { stiffness: 50, damping: 24, mass: 0.4 });
-
-  const goTo = useCallback(
-    (next: number, dir: number) => {
-      if (transitioning.current) return;
-      const clamped = Math.max(0, Math.min(slides.length - 1, next));
-
-      if (clamped === index) return;
-
-      transitioning.current = true;
-      setDirection(dir);
-      setIndex(clamped);
-      window.setTimeout(
-        () => {
-          transitioning.current = false;
-        },
-        reduceMotion ? 120 : 980,
-      );
-    },
-    [index, reduceMotion],
-  );
 
   useEffect(() => {
-    const heroIsPinned = () => {
-      const hero = document.getElementById("top");
-      if (!hero) return false;
-      const rect = hero.getBoundingClientRect();
-      return rect.top > -16 && rect.bottom > window.innerHeight - 16;
-    };
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
-    const onWheel = (event: WheelEvent) => {
-      if (Math.abs(event.deltaY) < 10) return;
-      if (!heroIsPinned()) return;
-
-      if (event.deltaY > 0) {
-        if (index >= slides.length - 1) return;
-        event.preventDefault();
-        goTo(index + 1, 1);
-        return;
-      }
-
-      if (index <= 0) return;
-      event.preventDefault();
-      goTo(index - 1, -1);
-    };
-
-    const onKey = (event: KeyboardEvent) => {
-      if (!heroIsPinned()) return;
-
-      if (["ArrowDown", "PageDown", " "].includes(event.key)) {
-        if (index >= slides.length - 1) return;
-        event.preventDefault();
-        goTo(index + 1, 1);
-      }
-      if (["ArrowUp", "PageUp"].includes(event.key)) {
-        if (index <= 0) return;
-        event.preventDefault();
-        goTo(index - 1, -1);
-      }
-    };
-
-    window.addEventListener("wheel", onWheel, { passive: false });
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [goTo, index]);
+  // Preload every slide image once so swaps never flash empty
+  useEffect(() => {
+    for (const slide of slides) {
+      const desktop = new window.Image();
+      desktop.src = slide.image;
+      const mobile = new window.Image();
+      mobile.src = slide.mobileImage;
+    }
+  }, []);
 
   useEffect(() => {
-    if (reduceMotion) return;
+    const panels = slides
+      .map((slide) => document.getElementById(`slide-${slide.id}`))
+      .filter(Boolean) as HTMLElement[];
 
-    const onMove = (event: PointerEvent) => {
-      rawX.set((event.clientX / window.innerWidth - 0.5) * 2);
-      rawY.set((event.clientY / window.innerHeight - 0.5) * 2);
-    };
+    if (panels.length === 0) return;
 
-    window.addEventListener("pointermove", onMove, { passive: true });
-    return () => window.removeEventListener("pointermove", onMove);
-  }, [rawX, rawY, reduceMotion]);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!visible?.target) return;
+        const next = panels.findIndex((panel) => panel === visible.target);
+        if (next >= 0) setIndex(next);
+      },
+      {
+        threshold: [0.35, 0.55, 0.75],
+        rootMargin: "-10% 0px -10% 0px",
+      },
+    );
 
-  const onDragEnd = (_: unknown, info: PanInfo) => {
-    if (window.scrollY > 24) return;
-    if (info.offset.y < -70 || info.velocity.y < -500) goTo(index + 1, 1);
-    if (info.offset.y > 70 || info.velocity.y > 500) goTo(index - 1, -1);
-  };
+    for (const panel of panels) observer.observe(panel);
+    return () => observer.disconnect();
+  }, []);
+
+  const goTo = useCallback((next: number) => {
+    if (next >= slides.length) {
+      document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+    const clamped = Math.max(0, Math.min(slides.length - 1, next));
+    document
+      .getElementById(`slide-${slides[clamped].id}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   return (
-    <section
-      id="top"
-      className="relative h-[100dvh] w-full overflow-hidden bg-[#1c2230]"
-      aria-roledescription="carousel"
-      aria-label="BLUEEYES story"
-    >
-      <AnimatePresence initial={false} custom={direction} mode="sync">
-        <motion.div
-          key={active.id}
-          custom={direction}
-          variants={slideVariants}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={
-            reduceMotion
-              ? { duration: 0.01 }
-              : { duration: 1.05, ease: [0.22, 1, 0.36, 1] }
-          }
-          drag={reduceMotion ? false : "y"}
-          dragConstraints={{ top: 0, bottom: 0 }}
-          dragElastic={0.08}
-          onDragEnd={onDragEnd}
-          className="absolute inset-0"
+    <div id="top" className="relative" aria-label="BLUEEYES story">
+      {slides.map((slide, i) => (
+        <section
+          key={slide.id}
+          id={`slide-${slide.id}`}
+          className="story-panel relative flex h-[100dvh] w-full flex-col justify-end overflow-hidden"
+          aria-label={`Slide ${i + 1} of ${slides.length}`}
         >
-          <FullBleedPhoto
-            src={active.image}
-            mobileSrc={active.mobileImage}
-            alt={active.imageAlt}
-            direction={direction}
-            reduceMotion={!!reduceMotion}
-            rawX={rawX}
-            rawY={rawY}
-            priority={index === 0}
-          />
+          <div className="absolute inset-0">
+            <picture>
+              <source media="(min-width: 768px)" srcSet={slide.image} />
+              <img
+                src={slide.mobileImage}
+                alt={slide.imageAlt}
+                width={isMobile ? 1440 : 2560}
+                height={isMobile ? 2560 : 1440}
+                decoding={i === 0 ? "sync" : "async"}
+                loading={i === 0 ? "eager" : "lazy"}
+                fetchPriority={i === 0 ? "high" : "auto"}
+                draggable={false}
+                className={`story-photo absolute inset-0 h-full w-full select-none object-cover object-center ${
+                  reduceMotion ? "" : "story-photo-motion"
+                }`}
+              />
+            </picture>
+          </div>
 
           <div className="relative z-10 flex h-full flex-col justify-end px-5 pb-24 pt-28 sm:px-8 sm:pb-28 lg:px-10 lg:pb-32">
             <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
               <div className="hero-copy max-w-4xl">
-                <motion.p
-                  initial={{ opacity: 0, y: 18 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2, duration: 0.6 }}
-                  className="mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-white/90"
-                >
-                  {String(index + 1).padStart(2, "0")} /{" "}
+                <p className="mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-white/90">
+                  {String(i + 1).padStart(2, "0")} /{" "}
                   {String(slides.length).padStart(2, "0")}
-                </motion.p>
-
-                <motion.h1
-                  initial={{ opacity: 0, y: 42 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    delay: 0.26,
-                    duration: 0.85,
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
+                </p>
+                <h1
                   className={`display whitespace-pre-line text-white ${
-                    index === 0
-                      ? "text-[clamp(3.6rem,12vw,9rem)]"
-                      : "text-[clamp(2.8rem,9vw,7.4rem)]"
+                    i === 0
+                      ? "text-[clamp(3.2rem,12vw,9rem)]"
+                      : "text-[clamp(2.4rem,9vw,7.4rem)]"
                   }`}
                 >
-                  {index === 0 ? (
+                  {i === 0 ? (
                     <>
                       blueeyes
                       <span className="text-signal-soft">.</span>
                     </>
                   ) : (
-                    active.title
+                    slide.title
                   )}
-                </motion.h1>
+                </h1>
               </div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 28 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.7 }}
-                className="hero-copy flex max-w-md flex-col items-start gap-6 text-left lg:pb-3"
-              >
+              <div className="hero-copy flex max-w-md flex-col items-start gap-6 text-left lg:pb-3">
                 <p className="panel-copy text-[1.02rem] leading-relaxed text-white sm:text-[1.1rem]">
-                  {active.subtitle}
+                  {slide.subtitle}
                 </p>
-                {active.cta ? (
-                    <button
-                      type="button"
-                      className="cta-pill"
-                      onClick={() => {
-                        if (index === slides.length - 1) onContact?.();
-                        else goTo(index + 1, 1);
-                      }}
-                    >
-                    {active.cta}
+                {slide.cta ? (
+                  <button
+                    type="button"
+                    className="cta-pill"
+                    onClick={() => {
+                      if (i === slides.length - 1) onContact?.();
+                      else goTo(i + 1);
+                    }}
+                  >
+                    {slide.cta}
                   </button>
                 ) : null}
-              </motion.div>
+              </div>
             </div>
           </div>
-        </motion.div>
-      </AnimatePresence>
+        </section>
+      ))}
 
-      <div className="pointer-events-none absolute inset-y-0 right-4 z-20 flex flex-col items-center justify-center gap-3 sm:right-7">
-        <div className="pointer-events-auto flex flex-col items-center gap-2.5">
+      <StoryChrome
+        index={index}
+        isMobile={isMobile}
+        reduceMotion={!!reduceMotion}
+        onGoTo={goTo}
+      />
+    </div>
+  );
+}
+
+function StoryChrome({
+  index,
+  isMobile,
+  reduceMotion,
+  onGoTo,
+}: {
+  index: number;
+  isMobile: boolean;
+  reduceMotion: boolean;
+  onGoTo: (next: number) => void;
+}) {
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const update = () => {
+      const contact = document.getElementById("contact");
+      if (!contact) return;
+      setVisible(contact.getBoundingClientRect().top > window.innerHeight * 0.55);
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <>
+      <div className="pointer-events-none fixed inset-y-0 right-3 z-30 flex flex-col items-center justify-center gap-3 sm:right-7">
+        <div className="pointer-events-auto flex flex-col items-center gap-3 sm:gap-2.5">
           {slides.map((slide, i) => (
             <button
               key={slide.id}
               type="button"
               aria-label={`Go to slide ${i + 1}`}
               aria-current={i === index ? "true" : undefined}
-              className="nav-dot"
+              className="nav-dot touch-manipulation"
               data-active={i === index}
-              onClick={() => goTo(i, i > index ? 1 : -1)}
+              onClick={() => onGoTo(i)}
             />
           ))}
         </div>
       </div>
 
-      <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 hidden -translate-x-1/2 items-center gap-3 text-[0.68rem] uppercase tracking-[0.2em] text-white/85 sm:flex">
-        <span className="hero-copy">Scroll</span>
+      <div className="pointer-events-none fixed bottom-5 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-2 text-[0.65rem] uppercase tracking-[0.18em] text-white/80 sm:bottom-6 sm:flex-row sm:gap-3 sm:text-[0.68rem] sm:tracking-[0.2em]">
+        <span className="hero-copy">
+          {index >= slides.length - 1
+            ? "Keep scrolling"
+            : isMobile
+              ? "Swipe"
+              : "Scroll"}
+        </span>
         <motion.span
           aria-hidden
-          animate={reduceMotion ? undefined : { y: [0, 5, 0] }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-          className="inline-block h-8 w-px bg-white/70"
+          animate={reduceMotion ? undefined : { y: [0, 6, 0] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          className="inline-block h-7 w-px bg-white/65 sm:h-8"
         />
       </div>
-    </section>
+    </>
   );
 }
-
-function FullBleedPhoto({
-  src,
-  mobileSrc,
-  alt,
-  direction,
-  reduceMotion,
-  rawX,
-  rawY,
-  priority,
-}: {
-  src: string;
-  mobileSrc: string;
-  alt: string;
-  direction: number;
-  reduceMotion: boolean;
-  rawX: MotionValue<number>;
-  rawY: MotionValue<number>;
-  priority: boolean;
-}) {
-  const x = useTransform(rawX, (v) => v * 16);
-  const y = useTransform(rawY, (v) => v * 10);
-
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      <motion.div
-        className="absolute inset-[-2%]"
-        style={reduceMotion ? undefined : { x, y }}
-        initial={reduceMotion ? false : { scale: 1.04, y: direction * 48 }}
-        animate={reduceMotion ? { scale: 1 } : { scale: [1, 1.035], y: 0 }}
-        transition={
-          reduceMotion
-            ? { duration: 0.01 }
-            : {
-                scale: {
-                  duration: 16,
-                  repeat: Infinity,
-                  repeatType: "mirror",
-                  ease: "easeInOut",
-                },
-                y: { duration: 1.1, ease: [0.22, 1, 0.36, 1] },
-              }
-        }
-      >
-        <ResponsivePhoto
-          src={src}
-          mobileSrc={mobileSrc}
-          alt={alt}
-          priority={priority}
-        />
-      </motion.div>
-    </div>
-  );
-}
-
-function ResponsivePhoto({
-  src,
-  mobileSrc,
-  alt,
-  priority,
-}: {
-  src: string;
-  mobileSrc: string;
-  alt: string;
-  priority: boolean;
-}) {
-  return (
-    <picture>
-      <source media="(min-width: 768px)" srcSet={src} />
-      <img
-        src={mobileSrc}
-        alt={alt}
-        width={1440}
-        height={2560}
-        decoding="async"
-        loading={priority ? "eager" : "lazy"}
-        fetchPriority={priority ? "high" : "auto"}
-        className="absolute inset-0 h-full w-full object-cover object-center"
-      />
-    </picture>
-  );
-}
-
-const slideVariants = {
-  enter: (direction: number) => ({
-    y: direction > 0 ? "30%" : "-30%",
-    opacity: 0,
-  }),
-  center: {
-    y: "0%",
-    opacity: 1,
-  },
-  exit: (direction: number) => ({
-    y: direction > 0 ? "-18%" : "18%",
-    opacity: 0,
-  }),
-};

@@ -1,4 +1,5 @@
 ﻿@import "tailwindcss";
+@import "lenis/dist/lenis.css";
 
 :root {
   --ink: #1c2230;
@@ -34,16 +35,45 @@
 
 html {
   scroll-behavior: auto;
-  background: var(--ink);
+  background: #0d1018;
 }
 
 body {
   margin: 0;
   min-height: 100%;
-  background: var(--ink);
+  background: #0d1018;
   color: var(--frost);
   font-family: var(--font-body), system-ui, sans-serif;
   overflow-x: hidden;
+}
+
+.story-panel {
+  background: #0d1018;
+}
+
+.story-photo {
+  transform: scale(1.02);
+  transform-origin: center center;
+}
+
+.story-photo-motion {
+  animation: story-ken 18s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes story-ken {
+  from {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.06) translate3d(0, -1.2%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-photo-motion {
+    animation: none;
+  }
 }
 
 ::selection {
@@ -105,6 +135,20 @@ body {
 .nav-dot[data-active="true"] {
   width: 22px;
   background: var(--frost);
+}
+
+@media (max-width: 767px) {
+  .nav-dot {
+    width: 8px;
+    height: 8px;
+    box-sizing: content-box;
+    padding: 8px 10px;
+    margin: -8px -10px;
+  }
+
+  .nav-dot[data-active="true"] {
+    width: 20px;
+  }
 }
 
 .cta-pill {

@@ -5,6 +5,7 @@ import { ContactSection } from "@/components/ContactSection";
 import { Header } from "@/components/Header";
 import { ImmersiveStory } from "@/components/ImmersiveStory";
 import { SiteFooter } from "@/components/SiteFooter";
+import { SmoothScroll } from "@/components/SmoothScroll";
 
 export function HomeExperience() {
   const jumpContact = useCallback(() => {
@@ -13,6 +14,7 @@ export function HomeExperience() {
 
   return (
     <>
+      <SmoothScroll />
       <div className="grain" aria-hidden />
       <Header onContact={jumpContact} />
       <main className="bg-[#0d1018]">
