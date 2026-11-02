@@ -13,7 +13,7 @@ export const slides: Slide[] = [
     id: "vision",
     title: "blueeyes.",
     subtitle:
-      "I design and build websites that help you look premium and convert better — clear, cinematic, and made to win clients.",
+      "I design cinematic websites that look premium and feel inevitable — so your brand is remembered, and the right clients reach out.",
     cta: "Explore",
     image: "/slides/hero-01.jpg",
     mobileImage: "/slides/hero-01-mobile.jpg",

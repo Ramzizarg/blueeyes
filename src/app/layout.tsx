@@ -15,14 +15,23 @@ const body = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "BLUEEYES | Websites designed to win clients",
+  title: "BLUEEYES | Websites that make brands unforgettable",
   description:
-    "BLUEEYES designs and builds premium websites that help you look sharp and connect with the right clients.",
+    "BLUEEYES designs cinematic websites that look premium, feel inevitable, and help the right clients find you.",
+  applicationName: "BLUEEYES",
   openGraph: {
-    title: "BLUEEYES | Websites designed to win clients",
+    title: "BLUEEYES | Websites that make brands unforgettable",
     description:
-      "Custom website design and Next.js builds — made so clients find you and reach out.",
+      "Custom website design and Next.js builds — clear, cinematic, and made to be remembered.",
     type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "blueeyes." }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BLUEEYES | Websites that make brands unforgettable",
+    description:
+      "Custom website design and Next.js builds — clear, cinematic, and made to be remembered.",
+    images: ["/og.png"],
   },
 };
 
