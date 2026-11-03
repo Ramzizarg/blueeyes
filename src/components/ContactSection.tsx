@@ -17,7 +17,7 @@ export function ContactSection() {
           src="/slides/hero-03.jpg"
           alt=""
           fill
-          quality={75}
+          quality={100}
           sizes="100vw"
           className="object-cover object-center opacity-30"
         />

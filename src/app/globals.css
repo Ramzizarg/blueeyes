@@ -10,8 +10,8 @@
   --signal-soft: #b4cbff;
   --blush: #f0b8d4;
   --line: rgba(244, 246, 251, 0.16);
-  --background: var(--ink);
-  --foreground: var(--frost);
+  --background: #ffffff;
+  --foreground: var(--ink);
 }
 
 @theme inline {
@@ -35,7 +35,12 @@
 
 html {
   scroll-behavior: auto;
-  background: #0d1018;
+  background: #ffffff;
+}
+
+/* Native snap on phones / Instagram WebView — Lenis is disabled there */
+html[data-scroll-mode="native"] {
+  scroll-snap-type: y proximity;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -47,64 +52,182 @@ html {
 body {
   margin: 0;
   min-height: 100%;
-  background: #0d1018;
-  color: var(--frost);
+  background: #ffffff;
+  color: var(--ink);
   font-family: var(--font-body), system-ui, sans-serif;
   overflow-x: hidden;
 }
 
 .story-panel {
-  background: #0d1018;
+  background: #ffffff;
   scroll-snap-align: start;
-  scroll-snap-stop: always;
+  scroll-snap-stop: normal;
+  content-visibility: auto;
+  contain-intrinsic-size: 100vw 100dvh;
 }
 
-.story-parallax {
-  transform: translate3d(0, 0, 0);
+.story-panel-intro {
+  background: #ffffff;
 }
 
 .story-photo {
-  transform: scale(1.08);
+  transform: scale(1.06);
   transform-origin: center center;
+  image-rendering: auto;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .story-photo-motion {
-  animation: story-ken 22s linear infinite alternate;
   will-change: transform;
-}
-
-.story-photo-motion[data-origin="tl"] {
-  transform-origin: 28% 32%;
-}
-
-.story-photo-motion[data-origin="tr"] {
-  transform-origin: 72% 30%;
-}
-
-.story-photo-motion[data-origin="bl"] {
-  transform-origin: 30% 70%;
-}
-
-.story-photo-motion[data-origin="br"] {
-  transform-origin: 70% 68%;
+  animation: story-ken-c 18s linear infinite alternate;
 }
 
 .story-photo-motion[data-origin="c"] {
-  transform-origin: 50% 46%;
+  transform-origin: 50% 45%;
+  animation-name: story-ken-c;
 }
 
-@keyframes story-ken {
+.story-photo-motion[data-origin="tl"] {
+  transform-origin: 22% 28%;
+  animation-name: story-ken-tl;
+}
+
+.story-photo-motion[data-origin="tr"] {
+  transform-origin: 78% 26%;
+  animation-name: story-ken-tr;
+}
+
+.story-photo-motion[data-origin="bl"] {
+  transform-origin: 24% 74%;
+  animation-name: story-ken-bl;
+}
+
+.story-photo-motion[data-origin="br"] {
+  transform-origin: 76% 72%;
+  animation-name: story-ken-br;
+}
+
+@keyframes story-ken-c {
   from {
-    transform: scale(1.08) translate3d(0, 0, 0);
+    transform: scale(1.04) translate3d(0, 0, 0);
   }
   to {
-    transform: scale(1.18) translate3d(-1.6%, -1.2%, 0);
+    transform: scale(1.12) translate3d(-1.4%, -1.1%, 0);
+  }
+}
+
+@keyframes story-ken-tl {
+  from {
+    transform: scale(1.05) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.13) translate3d(1.5%, 1.2%, 0);
+  }
+}
+
+@keyframes story-ken-tr {
+  from {
+    transform: scale(1.05) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.13) translate3d(-1.6%, 1.1%, 0);
+  }
+}
+
+@keyframes story-ken-bl {
+  from {
+    transform: scale(1.05) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.13) translate3d(1.4%, -1.4%, 0);
+  }
+}
+
+@keyframes story-ken-br {
+  from {
+    transform: scale(1.05) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.13) translate3d(-1.5%, -1.2%, 0);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .story-photo-motion {
     animation: none;
+  }
+}
+
+@keyframes story-ken-c-soft {
+  from {
+    transform: scale(1.06) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.15) translate3d(-1.4%, -1.1%, 0);
+  }
+}
+
+@keyframes story-ken-tl-soft {
+  from {
+    transform: scale(1.06) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.15) translate3d(1.4%, 1.1%, 0);
+  }
+}
+
+@keyframes story-ken-tr-soft {
+  from {
+    transform: scale(1.06) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.15) translate3d(-1.4%, 1.1%, 0);
+  }
+}
+
+@keyframes story-ken-bl-soft {
+  from {
+    transform: scale(1.06) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.15) translate3d(1.4%, -1.1%, 0);
+  }
+}
+
+@keyframes story-ken-br-soft {
+  from {
+    transform: scale(1.06) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.15) translate3d(-1.4%, -1.1%, 0);
+  }
+}
+
+/* Softer drift on phones — still animated, cheaper than desktop */
+@media (pointer: coarse), (hover: none) {
+  .story-photo-motion {
+    animation-duration: 24s;
+  }
+
+  .story-photo-motion[data-origin="c"] {
+    animation-name: story-ken-c-soft;
+  }
+
+  .story-photo-motion[data-origin="tl"] {
+    animation-name: story-ken-tl-soft;
+  }
+
+  .story-photo-motion[data-origin="tr"] {
+    animation-name: story-ken-tr-soft;
+  }
+
+  .story-photo-motion[data-origin="bl"] {
+    animation-name: story-ken-bl-soft;
+  }
+
+  .story-photo-motion[data-origin="br"] {
+    animation-name: story-ken-br-soft;
   }
 }
 
@@ -132,6 +255,13 @@ body {
   opacity: 0.08;
   mix-blend-mode: soft-light;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* SVG turbulence grain is expensive in Instagram / mobile WebViews */
+@media (pointer: coarse), (hover: none), (max-width: 1023px) {
+  .grain {
+    display: none;
+  }
 }
 
 .display {
@@ -167,20 +297,6 @@ body {
 .nav-dot[data-active="true"] {
   width: 22px;
   background: var(--frost);
-}
-
-@media (max-width: 767px) {
-  .nav-dot {
-    width: 8px;
-    height: 8px;
-    box-sizing: content-box;
-    padding: 8px 10px;
-    margin: -8px -10px;
-  }
-
-  .nav-dot[data-active="true"] {
-    width: 20px;
-  }
 }
 
 .cta-pill {
@@ -449,6 +565,258 @@ body {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+.welcome-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  overflow: hidden;
+  background: #000;
+  color: #e8eaef;
+}
+
+.welcome-gate-orb {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(50px);
+  opacity: 0.55;
+}
+
+.welcome-gate-orb-a {
+  width: 18rem;
+  height: 18rem;
+  top: 12%;
+  left: 50%;
+  transform: translateX(-58%);
+  background: rgba(110, 150, 255, 0.2);
+}
+
+.welcome-gate-orb-b {
+  width: 14rem;
+  height: 14rem;
+  right: 12%;
+  bottom: 16%;
+  background: rgba(214, 150, 190, 0.12);
+}
+
+.welcome-gate-inner {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 26.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.25rem 0.15rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.welcome-gate-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.welcome-gate-brand {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+}
+
+.welcome-gate-step {
+  margin: 0;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(232, 234, 239, 0.4);
+}
+
+.welcome-gate-track {
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.welcome-gate-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7ea2ff, #c4b0ff);
+  transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.welcome-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.welcome-chat-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.welcome-chat-avatar {
+  flex: 0 0 auto;
+  width: 1.45rem;
+  height: 1.45rem;
+  margin-top: 0.1rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #8eb4ff, #d7a8c8);
+  color: #0a0a0a;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.welcome-chat-bubble {
+  flex: 1;
+  min-width: 0;
+}
+
+.welcome-gate-prompt {
+  margin: 0;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 0.98rem;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.45;
+  color: #f4f6fa;
+  text-wrap: pretty;
+  min-height: 2.6em;
+}
+
+.welcome-gate-note {
+  margin: 0.45rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: rgba(198, 205, 220, 0.72);
+  min-height: 1.25em;
+}
+
+.welcome-caret {
+  display: inline-block;
+  width: 0.32rem;
+  height: 0.95em;
+  margin-left: 0.1rem;
+  vertical-align: -0.14em;
+  border-radius: 1px;
+  background: #c7d4ff;
+  animation: welcome-caret-blink 1s steps(1) infinite;
+}
+
+@keyframes welcome-caret-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.welcome-skip-hint {
+  margin: 0;
+  padding-left: 2.1rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(232, 234, 239, 0.3);
+}
+
+.welcome-gate-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-left: 2.1rem;
+}
+
+.welcome-gate-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-radius: 0.7rem;
+  background: transparent;
+  padding: 0.55rem 0.45rem;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.welcome-gate-option[data-active="true"] {
+  background: rgba(126, 162, 255, 0.12);
+}
+
+.welcome-gate-option:hover {
+  transform: translateY(-1px);
+}
+
+.welcome-gate-option-index {
+  min-width: 1.15rem;
+  padding-top: 0.08rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(232, 234, 239, 0.32);
+  white-space: nowrap;
+}
+
+.welcome-gate-option[data-active="true"] .welcome-gate-option-index {
+  color: #b7c8ff;
+}
+
+.welcome-gate-option-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.welcome-gate-option-label {
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #f2f4f8;
+}
+
+.welcome-gate-option-hint {
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: rgba(186, 194, 210, 0.58);
+}
+
+.welcome-gate-option[data-active="true"] .welcome-gate-option-hint {
+  color: rgba(183, 200, 255, 0.86);
+}
+
+@media (max-width: 640px) {
+  .welcome-gate-inner {
+    width: min(100%, 22.5rem);
+  }
+
+  .welcome-gate-options,
+  .welcome-skip-hint {
+    padding-left: 0;
   }
 }
 

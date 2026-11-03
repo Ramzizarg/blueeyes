@@ -10,6 +10,19 @@ declare global {
   }
 }
 
+function isTouchScrollDevice() {
+  if (typeof window === "undefined") return true;
+  const coarse = window.matchMedia("(pointer: coarse)").matches;
+  const noHover = window.matchMedia("(hover: none)").matches;
+  const narrow = window.matchMedia("(max-width: 1023px)").matches;
+  const ua = navigator.userAgent || "";
+  const inApp =
+    /Instagram|FBAN|FBAV|Line\/|Twitter|TikTok|Snapchat|MicroMessenger/i.test(
+      ua,
+    );
+  return coarse || noHover || narrow || inApp;
+}
+
 export function scrollToTarget(
   target: string | HTMLElement,
   options?: { duration?: number; offset?: number },
@@ -65,14 +78,19 @@ function nearestStoryPanel(maxDistanceRatio = 0.48) {
 export function SmoothScroll() {
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) return;
+    const touch = isTouchScrollDevice();
+
+    // Instagram / mobile WebViews need native scroll — Lenis causes lag there
+    document.documentElement.dataset.scrollMode = touch || reduce ? "native" : "smooth";
+
+    if (reduce || touch) return;
 
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
       syncTouch: false,
-      touchMultiplier: 1.35,
+      touchMultiplier: 1,
       wheelMultiplier: 0.9,
     });
 
@@ -114,7 +132,6 @@ export function SmoothScroll() {
       settleTimer = window.setTimeout(settleSnap, 70);
     });
 
-    // Soft section assist: a clear wheel flick advances one full image
     const onWheel = (event: WheelEvent) => {
       if (sectionLock || snapping || inContactZone()) return;
       if (Math.abs(event.deltaY) < 8) return;
@@ -122,7 +139,6 @@ export function SmoothScroll() {
       const panels = storyPanels();
       if (panels.length === 0) return;
 
-      // Only assist when already resting near a panel
       const resting = panels.findIndex(
         (panel) => Math.abs(panel.getBoundingClientRect().top) < 36,
       );
@@ -134,8 +150,7 @@ export function SmoothScroll() {
         wheelCarry = 0;
       }, 220);
 
-      const threshold = 48;
-      if (Math.abs(wheelCarry) < threshold) return;
+      if (Math.abs(wheelCarry) < 48) return;
 
       const goingDown = wheelCarry > 0;
       wheelCarry = 0;
@@ -170,6 +185,7 @@ export function SmoothScroll() {
       window.removeEventListener("wheel", onWheel);
       lenis.destroy();
       delete window.__blueeyesLenis;
+      delete document.documentElement.dataset.scrollMode;
     };
   }, []);
 

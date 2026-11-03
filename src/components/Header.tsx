@@ -26,16 +26,24 @@ export function Header({ onContact }: HeaderProps) {
     <motion.header
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
+      transition={{ duration: 0.85, ease: [0.76, 0, 0.24, 1], delay: 0.85 }}
       className="pointer-events-none fixed inset-x-0 top-0 z-50"
     >
       <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between px-5 py-5 sm:px-8 lg:px-10">
         <a
           href="#top"
-          className={`pointer-events-auto display text-[1.15rem] tracking-[-0.06em] transition-colors duration-300 sm:text-[1.35rem] ${tone}`}
+          className="pointer-events-auto inline-flex items-center"
           aria-label="BLUEEYES home"
         >
-          blueeyes<span className="text-signal-soft">.</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt=""
+            width={497}
+            height={220}
+            className={`h-7 w-auto transition duration-300 sm:h-8 ${onLight ? "invert" : ""}`}
+            draggable={false}
+          />
         </a>
 
         <div className="pointer-events-auto flex items-center gap-3">

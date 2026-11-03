@@ -1,4 +1,5 @@
 import { EMAIL } from "@/lib/contact";
+import { sql } from "@/lib/db";
 
 type Payload = {
   name?: string;
@@ -39,43 +40,52 @@ export async function POST(request: Request) {
     return Response.json({ error: "Missing required fields" }, { status: 422 });
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    return Response.json({ error: "Email delivery not configured" }, { status: 501 });
+  try {
+    const db = sql();
+    await db`
+      INSERT INTO client_requests (name, email, services, budget, message)
+      VALUES (${name}, ${email}, ${services}, ${budget || null}, ${message})
+    `;
+  } catch (error) {
+    console.error("Failed to save client request", error);
+    return Response.json({ error: "Could not save request" }, { status: 502 });
   }
 
-  const rows: [string, string][] = [
-    ["Name", name],
-    ["Email", email],
-    ["Needs", services.join(", ") || "—"],
-    ["Budget", budget ? `€${budget}` : "—"],
-  ];
+  const apiKey = process.env.RESEND_API_KEY;
+  if (apiKey) {
+    const rows: [string, string][] = [
+      ["Name", name],
+      ["Email", email],
+      ["Needs", services.join(", ") || "—"],
+      ["Budget", budget ? `€${budget}` : "—"],
+    ];
 
-  const html = `
-    <h2>New project request</h2>
-    <table cellpadding="6">${rows
-      .map(([k, v]) => `<tr><td><strong>${k}</strong></td><td>${escapeHtml(v)}</td></tr>`)
-      .join("")}</table>
-    <p style="white-space:pre-wrap">${escapeHtml(message)}</p>
-  `;
+    const html = `
+      <h2>New project request</h2>
+      <table cellpadding="6">${rows
+        .map(([k, v]) => `<tr><td><strong>${k}</strong></td><td>${escapeHtml(v)}</td></tr>`)
+        .join("")}</table>
+      <p style="white-space:pre-wrap">${escapeHtml(message)}</p>
+    `;
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: process.env.CONTACT_FROM ?? "BLUEEYES <onboarding@resend.dev>",
-      to: process.env.CONTACT_TO ?? EMAIL,
-      reply_to: email,
-      subject: `New website project — ${name}`,
-      html,
-    }),
-  });
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: process.env.CONTACT_FROM ?? "BLUEEYES <onboarding@resend.dev>",
+        to: process.env.CONTACT_TO ?? EMAIL,
+        reply_to: email,
+        subject: `New website project — ${name}`,
+        html,
+      }),
+    });
 
-  if (!res.ok) {
-    return Response.json({ error: "Could not send" }, { status: 502 });
+    if (!res.ok) {
+      console.error("Email delivery failed after saving request");
+    }
   }
 
   return Response.json({ ok: true });

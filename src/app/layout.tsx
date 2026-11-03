@@ -19,6 +19,10 @@ export const metadata: Metadata = {
   description:
     "BLUEEYES designs cinematic websites that look premium, feel inevitable, and help the right clients find you.",
   applicationName: "BLUEEYES",
+  icons: {
+    icon: [{ url: "/icon.png", type: "image/png" }],
+    apple: [{ url: "/apple-icon.png", type: "image/png" }],
+  },
   openGraph: {
     title: "BLUEEYES | Websites that make brands unforgettable",
     description:
@@ -41,7 +45,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${display.variable} ${body.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-ink text-frost">{children}</body>
+      <body className="min-h-full bg-white text-ink">{children}</body>
     </html>
   );
 }

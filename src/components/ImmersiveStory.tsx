@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { scrollToTarget } from "@/components/SmoothScroll";
 import { slides } from "@/lib/slides";
 
@@ -11,28 +11,56 @@ type ImmersiveStoryProps = {
 
 const origins = ["c", "tr", "bl", "br", "tl"] as const;
 
+const introEase = [0.22, 1, 0.36, 1] as const;
+
+function isTouchScrollDevice() {
+  const coarse = window.matchMedia("(pointer: coarse)").matches;
+  const noHover = window.matchMedia("(hover: none)").matches;
+  const narrow = window.matchMedia("(max-width: 1023px)").matches;
+  const ua = navigator.userAgent || "";
+  const inApp =
+    /Instagram|FBAN|FBAV|Line\/|Twitter|TikTok|Snapchat|MicroMessenger/i.test(
+      ua,
+    );
+  return coarse || noHover || narrow || inApp;
+}
+
 export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
   const [index, setIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const [touchScroll, setTouchScroll] = useState(true);
+  const [introDone, setIntroDone] = useState(false);
   const reduceMotion = useReducedMotion();
-  const parallaxRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
     const update = () => setIsMobile(mq.matches);
     update();
+    setTouchScroll(isTouchScrollDevice());
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
 
   useEffect(() => {
-    for (const slide of slides) {
-      const desktop = new window.Image();
-      desktop.src = slide.image;
-      const mobile = new window.Image();
-      mobile.src = slide.mobileImage;
+    if (reduceMotion) {
+      setIntroDone(true);
+      return;
     }
-  }, []);
+    const timer = window.setTimeout(() => setIntroDone(true), 1600);
+    return () => window.clearTimeout(timer);
+  }, [reduceMotion]);
+
+  useEffect(() => {
+    const start = Math.max(0, index - 1);
+    const end = Math.min(slides.length - 1, index + 1);
+    for (let i = start; i <= end; i += 1) {
+      const slide = slides[i];
+      const webp = new window.Image();
+      webp.src = isMobile ? slide.mobileImageWebp : slide.imageWebp;
+      const jpg = new window.Image();
+      jpg.src = isMobile ? slide.mobileImage : slide.image;
+    }
+  }, [index, isMobile]);
 
   useEffect(() => {
     const panels = slides
@@ -60,29 +88,6 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
     return () => observer.disconnect();
   }, []);
 
-  // Gentle parallax while panels slide past each other
-  useEffect(() => {
-    if (reduceMotion) return;
-
-    let frame = 0;
-    const tick = () => {
-      const vh = window.innerHeight || 1;
-      parallaxRefs.current.forEach((node) => {
-        if (!node) return;
-        const panel = node.parentElement?.parentElement;
-        if (!panel) return;
-        const rect = panel.getBoundingClientRect();
-        const progress = (rect.top + rect.height / 2 - vh / 2) / vh;
-        const shift = Math.max(-10, Math.min(10, progress * -12));
-        node.style.transform = `translate3d(0, ${shift}%, 0)`;
-      });
-      frame = requestAnimationFrame(tick);
-    };
-
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [reduceMotion]);
-
   const goTo = useCallback((next: number) => {
     if (next >= slides.length) {
       scrollToTarget("#contact", { duration: 1.2 });
@@ -95,91 +100,144 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
 
   return (
     <div id="top" className="relative" aria-label="BLUEEYES story">
-      {slides.map((slide, i) => (
-        <section
-          key={slide.id}
-          id={`slide-${slide.id}`}
-          className="story-panel relative flex h-[100dvh] w-full flex-col justify-end overflow-hidden"
-          aria-label={`Slide ${i + 1} of ${slides.length}`}
-        >
-          <div className="absolute inset-0 overflow-hidden">
-            <div
-              ref={(node) => {
-                parallaxRefs.current[i] = node;
-              }}
-              className="story-parallax absolute inset-[-12%] will-change-transform"
+      {slides.map((slide, i) => {
+        const active = i === index;
+        const isHero = i === 0;
+        const motionOn =
+          !reduceMotion &&
+          introDone &&
+          (touchScroll ? active : Math.abs(i - index) <= 1);
+
+        return (
+          <section
+            key={slide.id}
+            id={`slide-${slide.id}`}
+            className={`story-panel relative flex h-[100dvh] w-full flex-col justify-end overflow-hidden ${
+              isHero ? "story-panel-intro" : ""
+            }`}
+            aria-label={`Slide ${i + 1} of ${slides.length}`}
+          >
+            <div className="absolute inset-0 overflow-hidden">
+              <motion.div
+                className="absolute inset-[-3%]"
+                initial={
+                  isHero && !reduceMotion
+                    ? {
+                        opacity: 0,
+                        y: "10%",
+                        scale: 1.12,
+                      }
+                    : false
+                }
+                animate={{
+                  opacity: 1,
+                  y: "0%",
+                  scale: 1,
+                }}
+                transition={
+                  isHero && !reduceMotion
+                    ? {
+                        duration: 1.7,
+                        ease: introEase,
+                        opacity: { duration: 1.15, ease: "easeOut" },
+                      }
+                    : { duration: 0 }
+                }
+              >
+                <picture className="absolute inset-0 block h-full w-full">
+                  <source
+                    media="(min-width: 768px)"
+                    type="image/webp"
+                    srcSet={slide.imageWebp}
+                  />
+                  <source media="(min-width: 768px)" srcSet={slide.image} />
+                  <source type="image/webp" srcSet={slide.mobileImageWebp} />
+                  <img
+                    src={slide.mobileImage}
+                    alt={slide.imageAlt}
+                    width={isMobile ? 1600 : 3200}
+                    height={isMobile ? 2844 : 1800}
+                    decoding={i === 0 ? "sync" : "async"}
+                    loading={i === 0 ? "eager" : "lazy"}
+                    fetchPriority={i === 0 ? "high" : "auto"}
+                    draggable={false}
+                    data-origin={origins[i % origins.length]}
+                    data-active={active ? "true" : "false"}
+                    className={`story-photo absolute inset-0 h-full w-full select-none object-cover object-center ${
+                      motionOn ? "story-photo-motion" : ""
+                    }`}
+                  />
+                </picture>
+              </motion.div>
+            </div>
+
+            <motion.div
+              className="relative z-10 flex h-full flex-col justify-end px-5 pb-24 pt-28 sm:px-8 sm:pb-28 lg:px-10 lg:pb-32"
+              initial={
+                isHero && !reduceMotion
+                  ? { opacity: 0, y: 28 }
+                  : false
+              }
+              animate={{ opacity: 1, y: 0 }}
+              transition={
+                isHero && !reduceMotion
+                  ? { duration: 1, ease: introEase, delay: 0.55 }
+                  : { duration: 0 }
+              }
             >
-              <picture className="absolute inset-0 block h-full w-full">
-                <source media="(min-width: 768px)" srcSet={slide.image} />
-                <img
-                  src={slide.mobileImage}
-                  alt={slide.imageAlt}
-                  width={isMobile ? 1440 : 2560}
-                  height={isMobile ? 2560 : 1440}
-                  decoding={i === 0 ? "sync" : "async"}
-                  loading={i === 0 ? "eager" : "lazy"}
-                  fetchPriority={i === 0 ? "high" : "auto"}
-                  draggable={false}
-                  data-origin={origins[i % origins.length]}
-                  className={`story-photo absolute inset-0 h-full w-full select-none object-cover object-center ${
-                    reduceMotion ? "" : "story-photo-motion"
-                  }`}
-                />
-              </picture>
-            </div>
-          </div>
-
-          <div className="relative z-10 flex h-full flex-col justify-end px-5 pb-24 pt-28 sm:px-8 sm:pb-28 lg:px-10 lg:pb-32">
-            <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-              <div className="hero-copy max-w-4xl">
-                <p className="mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-white/90">
-                  {String(i + 1).padStart(2, "0")} /{" "}
-                  {String(slides.length).padStart(2, "0")}
-                </p>
-                <h1
-                  className={`display whitespace-pre-line text-white ${
-                    i === 0
-                      ? "text-[clamp(3.2rem,12vw,9rem)]"
-                      : "text-[clamp(2.4rem,9vw,7.4rem)]"
-                  }`}
-                >
-                  {i === 0 ? (
-                    <>
-                      blueeyes
-                      <span className="text-signal-soft">.</span>
-                    </>
-                  ) : (
-                    slide.title
-                  )}
-                </h1>
-              </div>
-
-              <div className="hero-copy flex max-w-md flex-col items-start gap-6 text-left lg:pb-3">
-                <p className="panel-copy text-[1.02rem] leading-relaxed text-white sm:text-[1.1rem]">
-                  {slide.subtitle}
-                </p>
-                {slide.cta ? (
-                  <button
-                    type="button"
-                    className="cta-pill"
-                    onClick={() => {
-                      if (i === slides.length - 1) onContact?.();
-                      else goTo(i + 1);
-                    }}
+              <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+                <div className="hero-copy max-w-4xl">
+                  <p className="mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-white/90">
+                    {String(i + 1).padStart(2, "0")} /{" "}
+                    {String(slides.length).padStart(2, "0")}
+                  </p>
+                  <h1
+                    className={`display whitespace-pre-line text-white ${
+                      i === 0
+                        ? "text-[clamp(3.2rem,12vw,9rem)]"
+                        : "text-[clamp(2.4rem,9vw,7.4rem)]"
+                    }`}
                   >
-                    {slide.cta}
-                  </button>
-                ) : null}
+                    {i === 0 ? (
+                      <>
+                        blueeyes
+                        <span className="text-signal-soft">.</span>
+                      </>
+                    ) : (
+                      slide.title
+                    )}
+                  </h1>
+                </div>
+
+                <div className="hero-copy flex max-w-md flex-col items-start gap-6 text-left lg:pb-3">
+                  <p className="panel-copy text-[1.02rem] leading-relaxed text-white sm:text-[1.1rem]">
+                    {slide.subtitle}
+                  </p>
+                  {slide.cta ? (
+                    <button
+                      type="button"
+                      className="cta-pill"
+                      onClick={() => {
+                        // Hero + final CTAs jump to contact ("From idea to launch.")
+                        if (i === 0 || i === slides.length - 1) onContact?.();
+                        else goTo(i + 1);
+                      }}
+                    >
+                      {slide.cta}
+                    </button>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          </div>
-        </section>
-      ))}
+            </motion.div>
+          </section>
+        );
+      })}
 
       <StoryChrome
         index={index}
         isMobile={isMobile}
         reduceMotion={!!reduceMotion}
+        ready={introDone}
         onGoTo={goTo}
       />
     </div>
@@ -190,11 +248,13 @@ function StoryChrome({
   index,
   isMobile,
   reduceMotion,
+  ready,
   onGoTo,
 }: {
   index: number;
   isMobile: boolean;
   reduceMotion: boolean;
+  ready: boolean;
   onGoTo: (next: number) => void;
 }) {
   const [visible, setVisible] = useState(true);
@@ -210,12 +270,16 @@ function StoryChrome({
     return () => window.removeEventListener("scroll", update);
   }, []);
 
-  if (!visible) return null;
+  if (!visible || !ready) return null;
 
   return (
-    <>
+    <motion.div
+      initial={reduceMotion ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6, ease: introEase }}
+    >
       <div className="pointer-events-none fixed inset-y-0 right-3 z-30 flex flex-col items-center justify-center gap-3 sm:right-7">
-        <div className="pointer-events-auto flex flex-col items-center gap-3 sm:gap-2.5">
+        <div className="pointer-events-auto flex flex-col items-center gap-2.5">
           {slides.map((slide, i) => (
             <button
               key={slide.id}
@@ -245,6 +309,6 @@ function StoryChrome({
           className="inline-block h-7 w-px bg-white/65 sm:h-8"
         />
       </div>
-    </>
+    </motion.div>
   );
 }
