@@ -40,7 +40,23 @@ html {
 
 /* Native snap on phones / Instagram WebView — Lenis is disabled there */
 html[data-scroll-mode="native"] {
-  scroll-snap-type: y proximity;
+  scroll-snap-type: y mandatory;
+  overscroll-behavior-y: none;
+}
+
+/* One photo per swipe, so a fast flick can't skip panels */
+html[data-scroll-mode="native"] .story-panel {
+  scroll-snap-stop: always;
+}
+
+/* Contact is taller than the screen, so it scrolls freely once reached */
+html[data-scroll-mode="native"] #contact {
+  scroll-snap-align: start;
+  scroll-margin-top: 0;
+}
+
+html[data-scroll-mode="native"] footer {
+  scroll-snap-align: end;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -63,7 +79,7 @@ body {
   scroll-snap-align: start;
   scroll-snap-stop: normal;
   content-visibility: auto;
-  contain-intrinsic-size: 100vw 100dvh;
+  contain-intrinsic-size: 100vw 100lvh;
 }
 
 .story-panel-intro {

@@ -112,7 +112,7 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
           <section
             key={slide.id}
             id={`slide-${slide.id}`}
-            className={`story-panel relative flex h-[100dvh] w-full flex-col justify-end overflow-hidden ${
+            className={`story-panel relative flex h-[100lvh] w-full flex-col justify-end overflow-hidden ${
               isHero ? "story-panel-intro" : ""
             }`}
             aria-label={`Slide ${i + 1} of ${slides.length}`}
@@ -172,7 +172,7 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
             </div>
 
             <motion.div
-              className="relative z-10 flex h-full flex-col justify-end px-5 pb-24 pt-28 sm:px-8 sm:pb-28 lg:px-10 lg:pb-32"
+              className="relative z-10 flex h-full flex-col justify-end px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))] pt-28 sm:px-8 sm:pb-28 lg:px-10 lg:pb-32"
               initial={
                 isHero && !reduceMotion
                   ? { opacity: 0, y: 28 }
