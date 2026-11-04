@@ -38,31 +38,23 @@ html {
   background: #ffffff;
 }
 
-/* Native snap on phones / Instagram WebView — Lenis is disabled there */
-html[data-scroll-mode="native"] {
-  scroll-snap-type: y mandatory;
-  overscroll-behavior-y: none;
+/* Phones: the story is one screen. A swipe moves it; the page does not. */
+html[data-scroll-mode="native"] #top {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  touch-action: none;
 }
 
-/* One photo per swipe, so a fast flick can't skip panels */
+html[data-scroll-mode="native"] .story-track {
+  display: block;
+  will-change: transform;
+}
+
 html[data-scroll-mode="native"] .story-panel {
-  scroll-snap-stop: always;
-}
-
-/* Contact is taller than the screen, so it scrolls freely once reached */
-html[data-scroll-mode="native"] #contact {
-  scroll-snap-align: start;
-  scroll-margin-top: 0;
-}
-
-html[data-scroll-mode="native"] footer {
-  scroll-snap-align: end;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-snap-type: y proximity;
-  }
+  height: 100vh;
+  height: 100dvh;
+  content-visibility: visible;
 }
 
 body {
@@ -74,10 +66,13 @@ body {
   overflow-x: hidden;
 }
 
+.story-track {
+  display: contents;
+}
+
 .story-panel {
-  background: #ffffff;
-  scroll-snap-align: start;
-  scroll-snap-stop: normal;
+  /* Pastel tone matching the photos, shown while an image is still loading */
+  background: #ece4f1;
   content-visibility: auto;
   contain-intrinsic-size: 100vw 100lvh;
 }

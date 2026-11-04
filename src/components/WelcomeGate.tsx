@@ -20,32 +20,16 @@ type Question = {
 
 const QUESTIONS: Question[] = [
   {
-    prompt: "Do you like projects that feel cinematic?",
-    note: "If yes — you’re in the right place.",
+    prompt: "This place is for the best website UX and UI.",
+    note: "Do you want that?",
     options: [
-      { label: "Yes, that’s my taste", hint: "I want work that stands out" },
-      { label: "Show me first", hint: "I need to see the standard" },
-    ],
-  },
-  {
-    prompt: "Want a pro website with the best design possible?",
-    note: "Clean craft. Strong UX. Nothing average.",
-    options: [
-      { label: "Absolutely", hint: "Premium is non‑negotiable" },
-      { label: "That’s the brief", hint: "Make it feel inevitable" },
-    ],
-  },
-  {
-    prompt: "Ready to open blueeyes?",
-    note: "I’ll take you into the full experience.",
-    options: [
-      { label: "Open the site", hint: "Start the experience" },
-      { label: "Let’s begin", hint: "Show the best UX / UI" },
+      { label: "Yes, I want this", hint: "Open the experience" },
+      { label: "Show me first", hint: "I’ll decide from the work" },
     ],
   },
 ];
 
-const STORAGE_KEY = "blueeyes-welcome-seen-v4";
+const STORAGE_KEY = "blueeyes-welcome-seen-v5";
 
 export function shouldShowWelcomeGate() {
   if (typeof window === "undefined") return true;
@@ -215,9 +199,6 @@ export function WelcomeGate({ onComplete }: WelcomeGateProps) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="" width={497} height={220} className="h-6 w-auto" draggable={false} />
           </div>
-          <p className="welcome-gate-step">
-            {step + 1}/{QUESTIONS.length}
-          </p>
         </div>
 
         <div className="welcome-gate-track" aria-hidden>

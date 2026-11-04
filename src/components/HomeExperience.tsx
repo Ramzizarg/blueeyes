@@ -10,6 +10,16 @@ import {
   WelcomeGate,
   shouldShowWelcomeGate,
 } from "@/components/WelcomeGate";
+import { slides } from "@/lib/slides";
+
+function preloadSlides() {
+  const wide = window.matchMedia("(min-width: 768px)").matches;
+  slides.forEach((slide, i) => {
+    const img = new window.Image();
+    img.fetchPriority = i === 0 ? "high" : "low";
+    img.src = wide ? slide.imageWebp : slide.mobileImageWebp;
+  });
+}
 
 export function HomeExperience() {
   const [ready, setReady] = useState(false);
@@ -17,6 +27,8 @@ export function HomeExperience() {
 
   useEffect(() => {
     const show = shouldShowWelcomeGate();
+    // The photos download while the visitor answers the welcome questions
+    if (show) preloadSlides();
     setShowGate(show);
     setReady(true);
   }, []);

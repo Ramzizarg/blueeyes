@@ -24,7 +24,7 @@ function isTouchScrollDevice() {
 }
 
 export function scrollToTarget(
-  target: string | HTMLElement,
+  target: string | HTMLElement | number,
   options?: { duration?: number; offset?: number },
 ) {
   const lenis = window.__blueeyesLenis;
@@ -34,6 +34,11 @@ export function scrollToTarget(
       duration: options?.duration ?? 1.15,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
     });
+    return;
+  }
+
+  if (typeof target === "number") {
+    window.scrollTo({ top: target + (options?.offset ?? 0), behavior: "smooth" });
     return;
   }
 

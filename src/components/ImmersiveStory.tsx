@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { scrollToTarget } from "@/components/SmoothScroll";
 import { slides } from "@/lib/slides";
 
@@ -27,10 +27,23 @@ function isTouchScrollDevice() {
 
 export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
   const [index, setIndex] = useState(0);
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [touchScroll, setTouchScroll] = useState(true);
   const [introDone, setIntroDone] = useState(false);
   const reduceMotion = useReducedMotion();
+  const deckRef = useRef<HTMLDivElement>(null);
+  const indexRef = useRef(0);
+  const touchScrollRef = useRef(touchScroll);
+
+  useEffect(() => {
+    indexRef.current = index;
+  }, [index]);
+
+  useEffect(() => {
+    touchScrollRef.current = touchScroll;
+  }, [touchScroll]);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -62,44 +75,144 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
     }
   }, [index, isMobile]);
 
+  // Desktop: the page itself scrolls, so the active slide follows scroll position.
   useEffect(() => {
-    const panels = slides
-      .map((slide) => document.getElementById(`slide-${slide.id}`))
-      .filter(Boolean) as HTMLElement[];
+    if (touchScroll) return;
 
-    if (panels.length === 0) return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const first = document.getElementById(`slide-${slides[0].id}`);
+      if (!first) return;
+      const panelH = first.offsetHeight || window.innerHeight;
+      const next = Math.round(window.scrollY / panelH);
+      setIndex(Math.max(0, Math.min(slides.length - 1, next)));
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [touchScroll]);
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (!visible?.target) return;
-        const next = panels.findIndex((panel) => panel === visible.target);
-        if (next >= 0) setIndex(next);
-      },
-      {
-        threshold: [0.35, 0.55, 0.75],
-        rootMargin: "-10% 0px -10% 0px",
-      },
-    );
+  // Mobile: one finger moves exactly one photo. The page stays still until
+  // the last photo, then the same swipe opens the contact section.
+  useEffect(() => {
+    if (!touchScroll) return;
+    const deck = deckRef.current;
+    if (!deck) return;
 
-    for (const panel of panels) observer.observe(panel);
-    return () => observer.disconnect();
-  }, []);
+    const pointer = {
+      y: 0,
+      t: 0,
+      dy: 0,
+      active: false,
+    };
 
-  const goTo = useCallback((next: number) => {
-    if (next >= slides.length) {
-      scrollToTarget("#contact", { duration: 1.2 });
-      return;
-    }
-    const clamped = Math.max(0, Math.min(slides.length - 1, next));
-    const el = document.getElementById(`slide-${slides[clamped].id}`);
-    if (el) scrollToTarget(el, { duration: 1.15 });
-  }, []);
+    const onStart = (event: TouchEvent) => {
+      if (window.scrollY > 12) return;
+      const touch = event.touches[0];
+      if (!touch) return;
+      pointer.y = touch.clientY;
+      pointer.t = performance.now();
+      pointer.dy = 0;
+      pointer.active = true;
+      setDragging(true);
+    };
+
+    const onMove = (event: TouchEvent) => {
+      if (!pointer.active) return;
+      const touch = event.touches[0];
+      if (!touch) return;
+      const raw = touch.clientY - pointer.y;
+      const atStart = indexRef.current === 0 && raw > 0;
+      const atEnd = indexRef.current === slides.length - 1 && raw < 0;
+      pointer.dy = raw;
+      if (event.cancelable) event.preventDefault();
+      setDragY(atStart || atEnd ? raw * 0.34 : raw);
+    };
+
+    const onEnd = () => {
+      if (!pointer.active) return;
+      pointer.active = false;
+      setDragging(false);
+      setDragY(0);
+
+      const height = deck.clientHeight || window.innerHeight;
+      const elapsed = Math.max(1, performance.now() - pointer.t);
+      const velocity = pointer.dy / elapsed;
+      const passed = Math.abs(pointer.dy) > height * 0.16 || Math.abs(velocity) > 0.45;
+      if (!passed) return;
+
+      const forward = pointer.dy < 0;
+      const next = indexRef.current + (forward ? 1 : -1);
+      if (next >= slides.length) {
+        scrollToTarget("#contact", { duration: 0.85 });
+        return;
+      }
+      if (next < 0) return;
+      setIndex(next);
+    };
+
+    deck.addEventListener("touchstart", onStart, { passive: true });
+    deck.addEventListener("touchmove", onMove, { passive: false });
+    deck.addEventListener("touchend", onEnd);
+    deck.addEventListener("touchcancel", onEnd);
+    return () => {
+      deck.removeEventListener("touchstart", onStart);
+      deck.removeEventListener("touchmove", onMove);
+      deck.removeEventListener("touchend", onEnd);
+      deck.removeEventListener("touchcancel", onEnd);
+    };
+  }, [touchScroll]);
+
+  const goTo = useCallback(
+    (next: number) => {
+      if (next >= slides.length) {
+        scrollToTarget("#contact", { duration: 1.2 });
+        return;
+      }
+      const clamped = Math.max(0, Math.min(slides.length - 1, next));
+      if (touchScrollRef.current) {
+        window.scrollTo({ top: 0 });
+        setIndex(clamped);
+        return;
+      }
+      const first = document.getElementById(`slide-${slides[0].id}`);
+      const panelH = first?.offsetHeight || window.innerHeight;
+      scrollToTarget(clamped * panelH, { duration: 1.15 });
+    },
+    [],
+  );
 
   return (
-    <div id="top" className="relative" aria-label="BLUEEYES story">
+    <div
+      id="top"
+      ref={deckRef}
+      className="story-deck relative"
+      aria-label="BLUEEYES story"
+    >
+      <div
+        className="story-track"
+        style={
+          touchScroll
+            ? {
+                transform: `translate3d(0, calc(${-index} * 100dvh + ${dragY}px), 0)`,
+                transition: dragging
+                  ? "none"
+                  : reduceMotion
+                    ? "transform 0.01s linear"
+                    : "transform 0.62s cubic-bezier(0.22, 1, 0.36, 1)",
+              }
+            : undefined
+        }
+      >
       {slides.map((slide, i) => {
         const active = i === index;
         const isHero = i === 0;
@@ -158,8 +271,8 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
                     width={isMobile ? 1600 : 3200}
                     height={isMobile ? 2844 : 1800}
                     decoding={i === 0 ? "sync" : "async"}
-                    loading={i === 0 ? "eager" : "lazy"}
-                    fetchPriority={i === 0 ? "high" : "auto"}
+                    loading="eager"
+                    fetchPriority={i === 0 ? "high" : "low"}
                     draggable={false}
                     data-origin={origins[i % origins.length]}
                     data-active={active ? "true" : "false"}
@@ -232,6 +345,7 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
           </section>
         );
       })}
+      </div>
 
       <StoryChrome
         index={index}
