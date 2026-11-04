@@ -12,20 +12,37 @@ const serviceOptions = [
   "Branding",
 ];
 
+const currencyOptions = [
+  { code: "EUR", symbol: "€" },
+  { code: "USD", symbol: "$" },
+  { code: "GBP", symbol: "£" },
+  { code: "MAD", symbol: "DH" },
+  { code: "CAD", symbol: "CA$" },
+  { code: "CHF", symbol: "CHF" },
+] as const;
+
+type CurrencyCode = (typeof currencyOptions)[number]["code"];
 type Status = "idle" | "sending" | "sent" | "mail" | "error";
 type Errors = Partial<Record<"name" | "email" | "message", string>>;
 
 const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+const digitsOnly = (value: string) => value.replace(/\D/g, "").slice(0, 12);
 
 export function ProjectForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [services, setServices] = useState<string[]>([]);
   const [budget, setBudget] = useState("");
+  const [currency, setCurrency] = useState<CurrencyCode>("EUR");
   const [message, setMessage] = useState("");
   const [honeypot, setHoneypot] = useState("");
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<Status>("idle");
+
+  const currencySymbol =
+    currencyOptions.find((option) => option.code === currency)?.symbol ?? "€";
+  const budgetLabel = budget ? `${currencySymbol}${budget}` : "";
 
   const toggleService = (service: string) =>
     setServices((current) =>
@@ -51,7 +68,7 @@ export function ProjectForm() {
       `Name: ${name}`,
       `Email: ${email}`,
       services.length > 0 && `Needs: ${services.join(", ")}`,
-      budget && `Budget: €${budget}`,
+      budgetLabel && `Budget: ${budgetLabel}`,
       "",
       message,
     ]
@@ -75,7 +92,8 @@ export function ProjectForm() {
           name,
           email,
           services,
-          budget,
+          budget: budgetLabel,
+          currency,
           message,
           website: honeypot,
         }),
@@ -205,20 +223,31 @@ export function ProjectForm() {
             </div>
           </fieldset>
 
-          <Field label="Your budget" hint="Optional — any amount">
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[0.88rem] font-medium text-[#1c2230]/70">
-                €
-              </span>
+          <Field label="Your budget" hint="Optional — numbers only">
+            <div className="budget-field">
+              <label className="budget-currency" aria-label="Currency">
+                <select
+                  name="currency"
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+                >
+                  {currencyOptions.map((option) => (
+                    <option key={option.code} value={option.code}>
+                      {option.symbol} {option.code}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <input
                 type="text"
                 name="budget"
-                inputMode="decimal"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="e.g. 1500"
                 value={budget}
-                onChange={(e) => setBudget(e.target.value)}
-                className="field"
-                style={{ paddingLeft: "1.6rem" }}
+                onChange={(e) => setBudget(digitsOnly(e.target.value))}
+                className="field budget-amount"
+                autoComplete="off"
               />
             </div>
           </Field>

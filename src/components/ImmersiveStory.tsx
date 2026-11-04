@@ -101,8 +101,9 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
     };
   }, [touchScroll]);
 
-  // Mobile: one finger moves exactly one photo. The page stays still until
-  // the last photo, then the same swipe opens the contact section.
+  // Mobile: swipe between photos only while parked at the top.
+  // Between the last photo and contact, the page uses normal scroll so the
+  // first upward swipe from the bottom always works (no dead gesture).
   useEffect(() => {
     if (!touchScroll) return;
     const deck = deckRef.current;
@@ -114,11 +115,47 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
       dy: 0,
       active: false,
     };
+    let parked = true;
+    let scrollFrame = 0;
+
+    const setDeckMode = (on: boolean) => {
+      parked = on;
+      deck.dataset.deck = on ? "on" : "off";
+    };
+
+    const syncFromScroll = () => {
+      scrollFrame = 0;
+      const y = window.scrollY;
+      if (y <= 8) {
+        // Just came back from contact — land on the last photo, ready to swipe.
+        if (!parked) {
+          setIndex(slides.length - 1);
+          window.scrollTo({ top: 0 });
+        }
+        setDeckMode(true);
+        return;
+      }
+      // Page is between story and contact (or on contact): never trap the finger.
+      if (pointer.active) {
+        pointer.active = false;
+        setDragging(false);
+        setDragY(0);
+      }
+      setDeckMode(false);
+    };
+
+    const onScroll = () => {
+      if (!scrollFrame) scrollFrame = requestAnimationFrame(syncFromScroll);
+    };
 
     const onStart = (event: TouchEvent) => {
-      if (window.scrollY > 12) return;
+      if (window.scrollY > 8) {
+        setDeckMode(false);
+        return;
+      }
       const touch = event.touches[0];
       if (!touch) return;
+      setDeckMode(true);
       pointer.y = touch.clientY;
       pointer.t = performance.now();
       pointer.dy = 0;
@@ -127,15 +164,26 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
     };
 
     const onMove = (event: TouchEvent) => {
-      if (!pointer.active) return;
+      if (!pointer.active || !parked) return;
       const touch = event.touches[0];
       if (!touch) return;
       const raw = touch.clientY - pointer.y;
       const atStart = indexRef.current === 0 && raw > 0;
       const atEnd = indexRef.current === slides.length - 1 && raw < 0;
       pointer.dy = raw;
+
+      // Leaving the last photo toward contact: release to native page scroll
+      // so the gesture continues smoothly instead of needing a second swipe.
+      if (atEnd && raw < -24) {
+        pointer.active = false;
+        setDragging(false);
+        setDragY(0);
+        setDeckMode(false);
+        return;
+      }
+
       if (event.cancelable) event.preventDefault();
-      setDragY(atStart || atEnd ? raw * 0.34 : raw);
+      setDragY(atStart || atEnd ? raw * 0.28 : raw);
     };
 
     const onEnd = () => {
@@ -143,32 +191,40 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
       pointer.active = false;
       setDragging(false);
       setDragY(0);
+      if (!parked) return;
 
       const height = deck.clientHeight || window.innerHeight;
       const elapsed = Math.max(1, performance.now() - pointer.t);
       const velocity = pointer.dy / elapsed;
-      const passed = Math.abs(pointer.dy) > height * 0.16 || Math.abs(velocity) > 0.45;
+      const passed =
+        Math.abs(pointer.dy) > height * 0.14 || Math.abs(velocity) > 0.4;
       if (!passed) return;
 
       const forward = pointer.dy < 0;
       const next = indexRef.current + (forward ? 1 : -1);
       if (next >= slides.length) {
-        scrollToTarget("#contact", { duration: 0.85 });
+        setDeckMode(false);
+        scrollToTarget("#contact", { duration: 0.7 });
         return;
       }
       if (next < 0) return;
       setIndex(next);
     };
 
+    setDeckMode(window.scrollY <= 8);
+    window.addEventListener("scroll", onScroll, { passive: true });
     deck.addEventListener("touchstart", onStart, { passive: true });
     deck.addEventListener("touchmove", onMove, { passive: false });
     deck.addEventListener("touchend", onEnd);
     deck.addEventListener("touchcancel", onEnd);
     return () => {
+      cancelAnimationFrame(scrollFrame);
+      window.removeEventListener("scroll", onScroll);
       deck.removeEventListener("touchstart", onStart);
       deck.removeEventListener("touchmove", onMove);
       deck.removeEventListener("touchend", onEnd);
       deck.removeEventListener("touchcancel", onEnd);
+      delete deck.dataset.deck;
     };
   }, [touchScroll]);
 

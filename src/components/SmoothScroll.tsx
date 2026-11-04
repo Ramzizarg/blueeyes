@@ -53,14 +53,25 @@ function storyPanels() {
     .filter(Boolean) as HTMLElement[];
 }
 
-function inContactZone() {
+function contactTop() {
   const contact = document.getElementById("contact");
-  if (!contact) return false;
-  return contact.getBoundingClientRect().top < window.innerHeight * 0.55;
+  return contact ? contact.getBoundingClientRect().top : Infinity;
+}
+
+function inContactZone() {
+  return contactTop() < window.innerHeight * 0.55;
+}
+
+/** Past the last story panel — free scroll into contact, no panel snap. */
+function pastStory() {
+  const panels = storyPanels();
+  const last = panels[panels.length - 1];
+  if (!last) return false;
+  return last.getBoundingClientRect().bottom < window.innerHeight * 0.55;
 }
 
 function nearestStoryPanel(maxDistanceRatio = 0.48) {
-  if (inContactZone()) return null;
+  if (inContactZone() || pastStory()) return null;
 
   const panels = storyPanels();
   let best: HTMLElement | null = null;
@@ -91,12 +102,12 @@ export function SmoothScroll() {
     if (reduce || touch) return;
 
     const lenis = new Lenis({
-      duration: 1.2,
+      duration: 1.05,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
       syncTouch: false,
       touchMultiplier: 1,
-      wheelMultiplier: 0.9,
+      wheelMultiplier: 0.95,
     });
 
     window.__blueeyesLenis = lenis;
@@ -106,8 +117,9 @@ export function SmoothScroll() {
     let sectionLock = false;
     let wheelCarry = 0;
     let wheelReset = 0;
+    let lastDir: -1 | 0 | 1 = 0;
 
-    const snapTo = (el: HTMLElement, duration = 1.05) => {
+    const snapTo = (el: HTMLElement, duration = 0.95) => {
       if (snapping) return;
       snapping = true;
       sectionLock = true;
@@ -119,27 +131,38 @@ export function SmoothScroll() {
           snapping = false;
           window.setTimeout(() => {
             sectionLock = false;
-          }, 120);
+          }, 80);
         },
       });
     };
 
     const settleSnap = () => {
       if (snapping || sectionLock) return;
-      const target = nearestStoryPanel(0.42);
+      // Never fight the user inside contact or while leaving it upward.
+      if (inContactZone() || pastStory()) return;
+      if (lastDir < 0 && contactTop() < window.innerHeight * 0.92) return;
+      const target = nearestStoryPanel(0.38);
       if (!target) return;
-      snapTo(target, 0.85);
+      snapTo(target, 0.75);
     };
 
-    lenis.on("scroll", () => {
+    lenis.on("scroll", (instance) => {
+      lastDir = instance.direction < 0 ? -1 : instance.direction > 0 ? 1 : 0;
       window.clearTimeout(settleTimer);
       if (snapping || sectionLock) return;
-      settleTimer = window.setTimeout(settleSnap, 70);
+      if (inContactZone() || pastStory()) return;
+      settleTimer = window.setTimeout(settleSnap, 110);
     });
 
     const onWheel = (event: WheelEvent) => {
-      if (sectionLock || snapping || inContactZone()) return;
+      if (sectionLock || snapping) return;
       if (Math.abs(event.deltaY) < 8) return;
+
+      // Free native Lenis scrolling inside contact / footer — no panel lock.
+      if (inContactZone() || pastStory()) {
+        wheelCarry = 0;
+        return;
+      }
 
       const panels = storyPanels();
       if (panels.length === 0) return;
@@ -153,9 +176,9 @@ export function SmoothScroll() {
       window.clearTimeout(wheelReset);
       wheelReset = window.setTimeout(() => {
         wheelCarry = 0;
-      }, 220);
+      }, 200);
 
-      if (Math.abs(wheelCarry) < 48) return;
+      if (Math.abs(wheelCarry) < 42) return;
 
       const goingDown = wheelCarry > 0;
       wheelCarry = 0;
@@ -167,11 +190,11 @@ export function SmoothScroll() {
 
       if (next >= panels.length) {
         const contact = document.getElementById("contact");
-        if (contact) snapTo(contact, 1.1);
+        if (contact) snapTo(contact, 0.95);
         return;
       }
 
-      snapTo(panels[next], 1.15);
+      snapTo(panels[next], 1);
     };
 
     window.addEventListener("wheel", onWheel, { passive: false });

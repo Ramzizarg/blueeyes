@@ -6,6 +6,7 @@ type Payload = {
   email?: string;
   services?: string[];
   budget?: string;
+  currency?: string;
   message?: string;
   website?: string;
 };
@@ -34,7 +35,9 @@ export async function POST(request: Request) {
   const email = body.email?.trim().slice(0, 200) ?? "";
   const services = (body.services ?? []).slice(0, 8).map((s) => String(s).slice(0, 60));
   const budget = body.budget?.trim().slice(0, 40) ?? "";
+  const currency = body.currency?.trim().slice(0, 8) ?? "";
   const message = body.message?.trim().slice(0, 4000) ?? "";
+  const budgetDisplay = budget || (currency ? currency : "");
 
   if (!name || !isEmail(email) || !message) {
     return Response.json({ error: "Missing required fields" }, { status: 422 });
@@ -57,7 +60,7 @@ export async function POST(request: Request) {
       ["Name", name],
       ["Email", email],
       ["Needs", services.join(", ") || "—"],
-      ["Budget", budget ? `€${budget}` : "—"],
+      ["Budget", budgetDisplay || "—"],
     ];
 
     const html = `
