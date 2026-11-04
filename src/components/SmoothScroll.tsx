@@ -23,14 +23,56 @@ function isTouchScrollDevice() {
   return coarse || noHover || narrow || inApp;
 }
 
+function easeOutCubic(t: number) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+/** Short animated page scroll — smoother than native smooth on mobile WebViews. */
+export function animateScrollTo(
+  top: number,
+  duration = 520,
+  onDone?: () => void,
+) {
+  const start = window.scrollY;
+  const delta = top - start;
+  if (Math.abs(delta) < 1) {
+    window.scrollTo({ top });
+    onDone?.();
+    return;
+  }
+
+  const lenis = window.__blueeyesLenis;
+  if (lenis) {
+    lenis.scrollTo(top, {
+      offset: 0,
+      duration: duration / 1000,
+      easing: easeOutCubic,
+      onComplete: onDone,
+    });
+    return;
+  }
+
+  const t0 = performance.now();
+  const step = (now: number) => {
+    const t = Math.min(1, (now - t0) / duration);
+    window.scrollTo({ top: start + delta * easeOutCubic(t) });
+    if (t < 1) requestAnimationFrame(step);
+    else onDone?.();
+  };
+  requestAnimationFrame(step);
+}
+
 export function scrollToTarget(
   target: string | HTMLElement | number,
   options?: { duration?: number; offset?: number },
 ) {
+  const durationMs = Math.round((options?.duration ?? 1.15) * 1000);
+  const offset = options?.offset ?? 0;
+
   const lenis = window.__blueeyesLenis;
   if (lenis) {
     lenis.scrollTo(target, {
-      offset: options?.offset ?? 0,
+      offset,
       duration: options?.duration ?? 1.15,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
     });
@@ -38,13 +80,14 @@ export function scrollToTarget(
   }
 
   if (typeof target === "number") {
-    window.scrollTo({ top: target + (options?.offset ?? 0), behavior: "smooth" });
+    animateScrollTo(target + offset, durationMs);
     return;
   }
 
   const el =
     typeof target === "string" ? document.querySelector(target) : target;
-  el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (!(el instanceof HTMLElement)) return;
+  animateScrollTo(el.getBoundingClientRect().top + window.scrollY + offset, durationMs);
 }
 
 function storyPanels() {

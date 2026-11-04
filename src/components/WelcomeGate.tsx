@@ -20,16 +20,16 @@ type Question = {
 
 const QUESTIONS: Question[] = [
   {
-    prompt: "This place is for the best website UX and UI.",
-    note: "Do you want that?",
+    prompt: "This place is for creating the best websites.",
+    note: "Do you want that — or not?",
     options: [
-      { label: "Yes, I want this", hint: "Open the experience" },
-      { label: "Show me first", hint: "I’ll decide from the work" },
+      { label: "Yes, I want the best", hint: "Open blueeyes" },
+      { label: "Not sure yet", hint: "Show me the work first" },
     ],
   },
 ];
 
-const STORAGE_KEY = "blueeyes-welcome-seen-v5";
+const STORAGE_KEY = "blueeyes-welcome-seen-v6";
 
 export function shouldShowWelcomeGate() {
   if (typeof window === "undefined") return true;

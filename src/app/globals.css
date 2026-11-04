@@ -88,163 +88,207 @@ body {
 }
 
 .story-photo {
-  transform: scale(1.06);
+  transform: scale(1.08);
   transform-origin: center center;
   image-rendering: auto;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
+  filter: saturate(1.02) contrast(1.02);
 }
 
 .story-photo-motion {
-  will-change: transform;
-  animation: story-ken-c 18s linear infinite alternate;
+  will-change: transform, filter;
+  animation:
+    story-ken-c 14s ease-in-out infinite alternate,
+    story-photo-glow 10s ease-in-out infinite alternate;
 }
 
 .story-photo-motion[data-origin="c"] {
   transform-origin: 50% 45%;
-  animation-name: story-ken-c;
+  animation-name: story-ken-c, story-photo-glow;
 }
 
 .story-photo-motion[data-origin="tl"] {
   transform-origin: 22% 28%;
-  animation-name: story-ken-tl;
+  animation-name: story-ken-tl, story-photo-glow;
 }
 
 .story-photo-motion[data-origin="tr"] {
   transform-origin: 78% 26%;
-  animation-name: story-ken-tr;
+  animation-name: story-ken-tr, story-photo-glow;
 }
 
 .story-photo-motion[data-origin="bl"] {
   transform-origin: 24% 74%;
-  animation-name: story-ken-bl;
+  animation-name: story-ken-bl, story-photo-glow;
 }
 
 .story-photo-motion[data-origin="br"] {
   transform-origin: 76% 72%;
-  animation-name: story-ken-br;
+  animation-name: story-ken-br, story-photo-glow;
+}
+
+.story-photo[data-active="true"] {
+  animation-play-state: running;
+}
+
+.story-veil {
+  pointer-events: none;
+  position: absolute;
+  inset: -8%;
+  opacity: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 30% 20%, rgba(255, 255, 255, 0.2), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 78% 70%, rgba(180, 203, 255, 0.16), transparent 65%);
+  mix-blend-mode: soft-light;
+}
+
+.story-veil[data-active="true"] {
+  opacity: 1;
+  animation: story-veil-drift 12s ease-in-out infinite alternate;
 }
 
 @keyframes story-ken-c {
   from {
-    transform: scale(1.04) translate3d(0, 0, 0);
+    transform: scale(1.06) translate3d(0, 0, 0) rotate(0deg);
   }
   to {
-    transform: scale(1.12) translate3d(-1.4%, -1.1%, 0);
+    transform: scale(1.18) translate3d(-2.2%, -1.8%, 0) rotate(-0.35deg);
   }
 }
 
 @keyframes story-ken-tl {
   from {
-    transform: scale(1.05) translate3d(0, 0, 0);
+    transform: scale(1.07) translate3d(0, 0, 0) rotate(0deg);
   }
   to {
-    transform: scale(1.13) translate3d(1.5%, 1.2%, 0);
+    transform: scale(1.19) translate3d(2.4%, 2%, 0) rotate(0.4deg);
   }
 }
 
 @keyframes story-ken-tr {
   from {
-    transform: scale(1.05) translate3d(0, 0, 0);
+    transform: scale(1.07) translate3d(0, 0, 0) rotate(0deg);
   }
   to {
-    transform: scale(1.13) translate3d(-1.6%, 1.1%, 0);
+    transform: scale(1.19) translate3d(-2.5%, 1.8%, 0) rotate(-0.35deg);
   }
 }
 
 @keyframes story-ken-bl {
   from {
-    transform: scale(1.05) translate3d(0, 0, 0);
+    transform: scale(1.07) translate3d(0, 0, 0) rotate(0deg);
   }
   to {
-    transform: scale(1.13) translate3d(1.4%, -1.4%, 0);
+    transform: scale(1.19) translate3d(2.2%, -2.2%, 0) rotate(0.3deg);
   }
 }
 
 @keyframes story-ken-br {
   from {
-    transform: scale(1.05) translate3d(0, 0, 0);
+    transform: scale(1.07) translate3d(0, 0, 0) rotate(0deg);
   }
   to {
-    transform: scale(1.13) translate3d(-1.5%, -1.2%, 0);
+    transform: scale(1.19) translate3d(-2.3%, -1.9%, 0) rotate(-0.4deg);
+  }
+}
+
+@keyframes story-photo-glow {
+  from {
+    filter: saturate(1.02) contrast(1.02) brightness(1);
+  }
+  to {
+    filter: saturate(1.12) contrast(1.05) brightness(1.04);
+  }
+}
+
+@keyframes story-veil-drift {
+  from {
+    transform: translate3d(-2%, -1%, 0) scale(1);
+    opacity: 0.55;
+  }
+  to {
+    transform: translate3d(3%, 2%, 0) scale(1.08);
+    opacity: 0.95;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .story-photo-motion {
+  .story-photo-motion,
+  .story-veil[data-active="true"] {
     animation: none;
   }
 }
 
 @keyframes story-ken-c-soft {
   from {
-    transform: scale(1.06) translate3d(0, 0, 0);
+    transform: scale(1.07) translate3d(0, 0, 0);
   }
   to {
-    transform: scale(1.15) translate3d(-1.4%, -1.1%, 0);
+    transform: scale(1.16) translate3d(-1.8%, -1.4%, 0);
   }
 }
 
 @keyframes story-ken-tl-soft {
   from {
-    transform: scale(1.06) translate3d(0, 0, 0);
+    transform: scale(1.07) translate3d(0, 0, 0);
   }
   to {
-    transform: scale(1.15) translate3d(1.4%, 1.1%, 0);
+    transform: scale(1.16) translate3d(1.8%, 1.4%, 0);
   }
 }
 
 @keyframes story-ken-tr-soft {
   from {
-    transform: scale(1.06) translate3d(0, 0, 0);
+    transform: scale(1.07) translate3d(0, 0, 0);
   }
   to {
-    transform: scale(1.15) translate3d(-1.4%, 1.1%, 0);
+    transform: scale(1.16) translate3d(-1.8%, 1.4%, 0);
   }
 }
 
 @keyframes story-ken-bl-soft {
   from {
-    transform: scale(1.06) translate3d(0, 0, 0);
+    transform: scale(1.07) translate3d(0, 0, 0);
   }
   to {
-    transform: scale(1.15) translate3d(1.4%, -1.1%, 0);
+    transform: scale(1.16) translate3d(1.8%, -1.4%, 0);
   }
 }
 
 @keyframes story-ken-br-soft {
   from {
-    transform: scale(1.06) translate3d(0, 0, 0);
+    transform: scale(1.07) translate3d(0, 0, 0);
   }
   to {
-    transform: scale(1.15) translate3d(-1.4%, -1.1%, 0);
+    transform: scale(1.16) translate3d(-1.8%, -1.4%, 0);
   }
 }
 
-/* Softer drift on phones — still animated, cheaper than desktop */
+/* Phones: still lively, slightly softer than desktop */
 @media (pointer: coarse), (hover: none) {
   .story-photo-motion {
-    animation-duration: 24s;
+    animation-duration: 16s, 12s;
   }
 
   .story-photo-motion[data-origin="c"] {
-    animation-name: story-ken-c-soft;
+    animation-name: story-ken-c-soft, story-photo-glow;
   }
 
   .story-photo-motion[data-origin="tl"] {
-    animation-name: story-ken-tl-soft;
+    animation-name: story-ken-tl-soft, story-photo-glow;
   }
 
   .story-photo-motion[data-origin="tr"] {
-    animation-name: story-ken-tr-soft;
+    animation-name: story-ken-tr-soft, story-photo-glow;
   }
 
   .story-photo-motion[data-origin="bl"] {
-    animation-name: story-ken-bl-soft;
+    animation-name: story-ken-bl-soft, story-photo-glow;
   }
 
   .story-photo-motion[data-origin="br"] {
-    animation-name: story-ken-br-soft;
+    animation-name: story-ken-br-soft, story-photo-glow;
   }
 }
 

@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { scrollToTarget } from "@/components/SmoothScroll";
+import { animateScrollTo, scrollToTarget } from "@/components/SmoothScroll";
 import { slides } from "@/lib/slides";
 
 type ImmersiveStoryProps = {
@@ -101,9 +101,8 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
     };
   }, [touchScroll]);
 
-  // Mobile: swipe between photos only while parked at the top.
-  // Between the last photo and contact, the page uses normal scroll so the
-  // first upward swipe from the bottom always works (no dead gesture).
+  // Mobile: swipe between photos at the top. On the last photo, the same
+  // upward drag pulls contact up with the finger, then eases into place.
   useEffect(() => {
     if (!touchScroll) return;
     const deck = deckRef.current;
@@ -114,9 +113,18 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
       t: 0,
       dy: 0,
       active: false,
+      pullingContact: false,
     };
     let parked = true;
     let scrollFrame = 0;
+    let animating = false;
+
+    const contactTop = () => {
+      const contact = document.getElementById("contact");
+      return contact
+        ? contact.getBoundingClientRect().top + window.scrollY
+        : window.innerHeight;
+    };
 
     const setDeckMode = (on: boolean) => {
       parked = on;
@@ -125,21 +133,12 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
 
     const syncFromScroll = () => {
       scrollFrame = 0;
+      if (animating || pointer.active) return;
       const y = window.scrollY;
       if (y <= 8) {
-        // Just came back from contact — land on the last photo, ready to swipe.
-        if (!parked) {
-          setIndex(slides.length - 1);
-          window.scrollTo({ top: 0 });
-        }
+        if (!parked) setIndex(slides.length - 1);
         setDeckMode(true);
         return;
-      }
-      // Page is between story and contact (or on contact): never trap the finger.
-      if (pointer.active) {
-        pointer.active = false;
-        setDragging(false);
-        setDragY(0);
       }
       setDeckMode(false);
     };
@@ -149,6 +148,7 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
     };
 
     const onStart = (event: TouchEvent) => {
+      if (animating) return;
       if (window.scrollY > 8) {
         setDeckMode(false);
         return;
@@ -160,6 +160,7 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
       pointer.t = performance.now();
       pointer.dy = 0;
       pointer.active = true;
+      pointer.pullingContact = false;
       setDragging(true);
     };
 
@@ -168,22 +169,22 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
       const touch = event.touches[0];
       if (!touch) return;
       const raw = touch.clientY - pointer.y;
-      const atStart = indexRef.current === 0 && raw > 0;
-      const atEnd = indexRef.current === slides.length - 1 && raw < 0;
       pointer.dy = raw;
 
-      // Leaving the last photo toward contact: release to native page scroll
-      // so the gesture continues smoothly instead of needing a second swipe.
-      if (atEnd && raw < -24) {
-        pointer.active = false;
-        setDragging(false);
+      const onLast = indexRef.current === slides.length - 1;
+      const atStart = indexRef.current === 0 && raw > 0;
+
+      // Last photo → contact: page follows the finger 1:1.
+      if (onLast && (raw < 0 || pointer.pullingContact)) {
+        pointer.pullingContact = true;
+        if (event.cancelable) event.preventDefault();
         setDragY(0);
-        setDeckMode(false);
+        window.scrollTo({ top: Math.max(0, Math.min(-raw, contactTop())) });
         return;
       }
 
       if (event.cancelable) event.preventDefault();
-      setDragY(atStart || atEnd ? raw * 0.28 : raw);
+      setDragY(atStart ? raw * 0.28 : raw);
     };
 
     const onEnd = () => {
@@ -191,11 +192,32 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
       pointer.active = false;
       setDragging(false);
       setDragY(0);
-      if (!parked) return;
 
       const height = deck.clientHeight || window.innerHeight;
       const elapsed = Math.max(1, performance.now() - pointer.t);
       const velocity = pointer.dy / elapsed;
+
+      // Finish or cancel the pull into contact.
+      if (pointer.pullingContact) {
+        pointer.pullingContact = false;
+        const y = window.scrollY;
+        const target = contactTop();
+        const commit =
+          y > height * 0.18 || (pointer.dy < 0 && Math.abs(velocity) > 0.35);
+        animating = true;
+        setDeckMode(false);
+        animateScrollTo(commit ? target : 0, commit ? 460 : 380, () => {
+          animating = false;
+          if (!commit) {
+            setDeckMode(true);
+            setIndex(slides.length - 1);
+          }
+        });
+        return;
+      }
+
+      if (!parked) return;
+
       const passed =
         Math.abs(pointer.dy) > height * 0.14 || Math.abs(velocity) > 0.4;
       if (!passed) return;
@@ -203,8 +225,12 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
       const forward = pointer.dy < 0;
       const next = indexRef.current + (forward ? 1 : -1);
       if (next >= slides.length) {
+        // Flick from last photo without much drag distance.
+        animating = true;
         setDeckMode(false);
-        scrollToTarget("#contact", { duration: 0.7 });
+        animateScrollTo(contactTop(), 460, () => {
+          animating = false;
+        });
         return;
       }
       if (next < 0) return;
@@ -288,29 +314,32 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
           >
             <div className="absolute inset-0 overflow-hidden">
               <motion.div
-                className="absolute inset-[-3%]"
+                className="absolute inset-[-6%]"
                 initial={
-                  isHero && !reduceMotion
-                    ? {
-                        opacity: 0,
-                        y: "10%",
-                        scale: 1.12,
-                      }
-                    : false
+                  reduceMotion
+                    ? false
+                    : isHero
+                      ? { opacity: 0, y: "10%", scale: 1.14 }
+                      : { opacity: 0.72, scale: 1.08 }
                 }
-                animate={{
-                  opacity: 1,
-                  y: "0%",
-                  scale: 1,
-                }}
+                animate={
+                  active || isHero
+                    ? { opacity: 1, y: "0%", scale: 1 }
+                    : { opacity: 0.85, scale: 1.04 }
+                }
                 transition={
-                  isHero && !reduceMotion
-                    ? {
-                        duration: 1.7,
-                        ease: introEase,
-                        opacity: { duration: 1.15, ease: "easeOut" },
-                      }
-                    : { duration: 0 }
+                  reduceMotion
+                    ? { duration: 0 }
+                    : isHero
+                      ? {
+                          duration: 1.7,
+                          ease: introEase,
+                          opacity: { duration: 1.15, ease: "easeOut" },
+                        }
+                      : {
+                          duration: 0.85,
+                          ease: introEase,
+                        }
                 }
               >
                 <picture className="absolute inset-0 block h-full w-full">
@@ -337,6 +366,11 @@ export function ImmersiveStory({ onContact }: ImmersiveStoryProps) {
                     }`}
                   />
                 </picture>
+                <div
+                  className="story-veil"
+                  data-active={motionOn ? "true" : "false"}
+                  aria-hidden
+                />
               </motion.div>
             </div>
 
